@@ -71,9 +71,57 @@ class Application(object):
 	# viewport initializations
 	def setupScene(self):
 		sceneManager = self.root.createSceneManager(ogre.ST_GENERIC, "Default SceneManager")
-		camera = sceneManager.createCamera("Camera")
-		viewPort = self.root.getAutoCreatedWindow().addViewport(camera)
+		
+		sceneManager.ambientLight = (0, 0, 0)
+		sceneManager.shadowTechnique = ogre.SHADOWTYPE_STENCIL_ADDITIVE
  
+		# Setup a mesh object.
+		ent = sceneManager.createEntity('Ninja', 'ninja.mesh')
+		ent.castShadows = True
+		sceneManager.getRootSceneNode().createChildSceneNode().attachObject(ent)
+ 
+		# Setup a ground plane.
+		plane = ogre.Plane ((0, 1, 0), 0)
+		meshManager = ogre.MeshManager.getSingleton ()
+		meshManager.createPlane ('Ground', 'General', plane,
+									 1500, 1500, 20, 20, True, 1, 5, 5, (0, 0, 1))
+		ent = sceneManager.createEntity('GroundEntity', 'Ground')
+		sceneManager.getRootSceneNode().createChildSceneNode ().attachObject (ent)
+		ent.setMaterialName ('Examples/Rockwall')
+		ent.castShadows = False
+ 
+		# Setup a point light.
+		light = sceneManager.createLight ('PointLight')
+		light.type = ogre.Light.LT_POINT
+		light.position = (150, 300, 150)
+		light.diffuseColour = (.5, .0, .0)    # Red
+		light.specularColour = (.5, .0, .0)
+ 
+		# Setup a distant directional light.
+		light = sceneManager.createLight ('DirectionalLight')
+		light.type = ogre.Light.LT_DIRECTIONAL
+		light.diffuseColour = (.5, .5, .0)    # yellow
+		light.specularColour = (.75, .75, .75)
+		light.direction = (0, -1, 1)
+ 
+		# Setup a spot light.
+		light = sceneManager.createLight ('SpotLight')
+		light.type = ogre.Light.LT_SPOTLIGHT
+		light.diffuseColour = (0, 0, .5)    # Blue
+		light.specularColour = (0, 0, .5)
+		light.direction = (-1, -1, 0)
+		light.position = (300, 300, 0)
+		light.setSpotlightRange (ogre.Degree (35), ogre.Degree (50))
+
+		camera = sceneManager.createCamera("Camera")
+		camera.position = (0, 150, -500)
+		camera.lookAt ((0, 0, 0))
+		camera.nearClipDistance = 5
+		
+		viewPort = self.root.getAutoCreatedWindow().addViewport(camera)
+		camera.aspectRatio = float (viewPort.actualWidth) / float (viewPort.actualHeight)
+
+
 	# here setup the input system (OIS is the one preferred with Ogre3D)
 	def setupInputSystem(self):
 		windowHandle = 0
