@@ -1,23 +1,11 @@
 import ogre.renderer.OGRE as ogre
 import ogre.io.OIS as OIS
 import ogre.gui.CEGUI as CEGUI
- 
-class ExitListener(ogre.FrameListener):
- 
-	def __init__(self, keyboard):
-		ogre.FrameListener.__init__(self)
-		self.keyboard = keyboard
- 
-	def frameStarted(self, evt):
-		self.keyboard.capture()
-		return not self.keyboard.isKeyDown(OIS.KC_ESCAPE)
- 
-	def __del__(self):
-		del self.renderer
-		del self.system
-		del self.exitListener
-		del self.root
- 
+
+import lib.Input as Input
+
+import Level as Level
+
 class Application(object):
  
 	def go(self):
@@ -71,55 +59,33 @@ class Application(object):
 	# viewport initializations
 	def setupScene(self):
 		sceneManager = self.root.createSceneManager(ogre.ST_GENERIC, "Default SceneManager")
-		
-		sceneManager.ambientLight = (0, 0, 0)
-		sceneManager.shadowTechnique = ogre.SHADOWTYPE_STENCIL_ADDITIVE
- 
-		# Setup a mesh object.
-		ent = sceneManager.createEntity('Ninja', 'ninja.mesh')
-		ent.castShadows = True
-		sceneManager.getRootSceneNode().createChildSceneNode().attachObject(ent)
- 
-		# Setup a ground plane.
-		plane = ogre.Plane ((0, 1, 0), 0)
-		meshManager = ogre.MeshManager.getSingleton ()
-		meshManager.createPlane ('Ground', 'General', plane,
-									 1500, 1500, 20, 20, True, 1, 5, 5, (0, 0, 1))
-		ent = sceneManager.createEntity('GroundEntity', 'Ground')
-		sceneManager.getRootSceneNode().createChildSceneNode ().attachObject (ent)
-		ent.setMaterialName ('Examples/Rockwall')
-		ent.castShadows = False
- 
-		# Setup a point light.
-		light = sceneManager.createLight ('PointLight')
-		light.type = ogre.Light.LT_POINT
-		light.position = (150, 300, 150)
-		light.diffuseColour = (.5, .0, .0)    # Red
-		light.specularColour = (.5, .0, .0)
- 
-		# Setup a distant directional light.
-		light = sceneManager.createLight ('DirectionalLight')
-		light.type = ogre.Light.LT_DIRECTIONAL
-		light.diffuseColour = (.5, .5, .0)    # yellow
-		light.specularColour = (.75, .75, .75)
-		light.direction = (0, -1, 1)
- 
-		# Setup a spot light.
-		light = sceneManager.createLight ('SpotLight')
-		light.type = ogre.Light.LT_SPOTLIGHT
-		light.diffuseColour = (0, 0, .5)    # Blue
-		light.specularColour = (0, 0, .5)
-		light.direction = (-1, -1, 0)
-		light.position = (300, 300, 0)
-		light.setSpotlightRange (ogre.Degree (35), ogre.Degree (50))
 
-		camera = sceneManager.createCamera("Camera")
-		camera.position = (0, 150, -500)
-		camera.lookAt ((0, 0, 0))
-		camera.nearClipDistance = 5
-		
-		viewPort = self.root.getAutoCreatedWindow().addViewport(camera)
-		camera.aspectRatio = float (viewPort.actualWidth) / float (viewPort.actualHeight)
+		level = Level.newLevel(sceneManager)
+
+		self.camera = sceneManager.createCamera("Camera")
+		self.camera.position = (0, 150, -500)
+		self.camera.lookAt ((0, 0, 0))
+		self.camera.nearClipDistance = 5
+
+		Input.onKey('W', self.forward)
+		Input.onKey('S', self.back)
+				
+		viewPort = self.root.getAutoCreatedWindow().addViewport(self.camera)
+		self.camera.aspectRatio = float (viewPort.actualWidth) / float (viewPort.actualHeight)
+
+	def forward(this):
+		this.camera.position = (
+			this.camera.position.x,
+			this.camera.position.y,
+			this.camera.position.z + 10
+		)
+
+	def back(this):
+		this.camera.position = (
+			this.camera.position.x,
+			this.camera.position.y,
+			this.camera.position.z - 10
+		)
 
 
 	# here setup the input system (OIS is the one preferred with Ogre3D)
@@ -133,8 +99,10 @@ class Application(object):
 		# Now InputManager is initialized for use. Keyboard and Mouse objects
 		# must still be initialized separately
 		try:
-			self.keyboard = self.inputManager.createInputObjectKeyboard(OIS.OISKeyboard, False)
-			self.mouse = self.inputManager.createInputObjectMouse(OIS.OISMouse, False)
+			Input.init(
+				self.inputManager.createInputObjectKeyboard(OIS.OISKeyboard, False), 
+				self.inputManager.createInputObjectMouse(OIS.OISMouse, False)
+			)
 		except Exception, e:
 			raise e
  
@@ -156,17 +124,16 @@ class Application(object):
  
 	# Create the frame listeners
 	def createFrameListener(self):
-		self.exitListener = ExitListener(self.keyboard)
-		self.root.addFrameListener(self.exitListener)
- 
+		self.root.addFrameListener(Input.getFrameListener())
+		
 	# This is the rendering loop
 	def startRenderLoop(self):
 		self.root.startRendering()
  
 	# In the end, clean everything up (= delete)
 	def cleanUp(self):
-		self.inputManager.destroyInputObjectKeyboard(self.keyboard)
-		self.inputManager.destroyInputObjectMouse(self.mouse)
+		self.inputManager.destroyInputObjectKeyboard(Input._keyboard)
+		self.inputManager.destroyInputObjectMouse(Input._mouse)
 		OIS.InputManager.destroyInputSystem(self.inputManager)
 		self.inputManager = None
  
